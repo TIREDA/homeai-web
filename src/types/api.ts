@@ -14,8 +14,8 @@ export interface ApiResponse<T> {
   message: string
   /** 业务数据 */
   data: T
-  /** 服务端时间戳（毫秒） */
-  timestamp?: number
+  /** 用于后端日志排查的请求标识 */
+  requestId: string
 }
 
 /** 分页结果 */
@@ -50,14 +50,17 @@ export class ApiError extends Error {
   readonly status: number
   /** 后端业务码（若有） */
   readonly code?: number
+  /** 后端请求标识（若有） */
+  readonly requestId?: string
   /** 原始错误对象（用于调试） */
   readonly cause?: unknown
 
-  constructor(message: string, options: { status?: number; code?: number; cause?: unknown } = {}) {
+  constructor(message: string, options: { status?: number; code?: number; requestId?: string; cause?: unknown } = {}) {
     super(message)
     this.name = "ApiError"
     this.status = options.status ?? 0
     this.code = options.code
+    this.requestId = options.requestId
     this.cause = options.cause
   }
 

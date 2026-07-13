@@ -2,7 +2,7 @@
  * 统一 API 客户端。
  *
  * 通过环境变量 `VITE_USE_MOCK` 在两种模式间切换：
- *   - mock 模式（默认）：数据来自本地 mock，用 `mockRequest` 模拟网络延迟；
+ *   - mock 模式（仅在 `VITE_USE_MOCK=true` 时）：数据来自本地 mock，用 `mockRequest` 模拟网络延迟；
  *   - 真实模式：调用 `VITE_API_BASE_URL` 指向的 Spring Boot 后端。
  *
  * 各 api 模块统一用 `request(mockFactory, { path })` 封装：
@@ -13,10 +13,10 @@ import { ApiError } from "@/types/api"
 import type { ApiResponse } from "@/types/api"
 
 /** 后端 API 根地址（真实模式使用） */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api"
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1"
 
-/** 是否使用本地 mock 数据（默认开启，除非显式设为 "false"） */
-export const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? "true") !== "false"
+/** 是否使用本地 mock 数据；默认真实 API。 */
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true"
 
 /** 真实请求的可选配置 */
 export interface RequestConfig {
@@ -27,7 +27,7 @@ export interface RequestConfig {
   /** 请求体（对象会自动序列化为 JSON） */
   body?: unknown
   /** 查询参数 */
-  query?: Record<string, string | number | boolean | undefined>
+  query?: object
   /** mock 模式下的模拟延迟（毫秒） */
   delay?: number
 }
@@ -85,14 +85,20 @@ export async function http<T>(config: RequestConfig): Promise<T> {
     throw new ApiError("网络错误：无法连接到服务器", { status: 0, cause: err })
   }
 
-  if (!res.ok) {
+  let payload: ApiResponse<T>
+  try {
+    payload = (await res.json()) as ApiResponse<T>
+  } catch {
     throw new ApiError(`请求失败：${res.status} ${res.statusText}`, { status: res.status })
   }
 
-  const payload = (await res.json()) as ApiResponse<T>
-  const isSuccess = payload.code === 0 || payload.code === 200
+  const isSuccess = res.ok && payload.code === 0
   if (!isSuccess) {
-    throw new ApiError(payload.message || "请求失败", { status: res.status, code: payload.code })
+    throw new ApiError(payload.message || `请求失败：${res.status} ${res.statusText}`, {
+      status: res.status,
+      code: payload.code,
+      requestId: payload.requestId,
+    })
   }
   return payload.data
 }

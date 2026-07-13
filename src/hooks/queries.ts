@@ -1,14 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 
-import {
-  fetchContinueWatching,
-  fetchFeatured,
-  fetchHomeRows,
-  fetchMovies,
-  fetchMovieDetail,
-  fetchReleases,
-  fetchQualityProfiles,
-} from "@/api/movies"
+import { fetchContinueWatching, fetchDiscoverMovies, fetchFeatured, fetchHomeRows, fetchMovieSearch, fetchMovies, fetchMovieDetail } from "@/api/movies"
+import type { DiscoverMoviesQuery } from "@/api/movies"
+import type { PageQuery } from "@/types/api"
 import { fetchDownloads } from "@/api/downloads"
 import { fetchLibrarySummary, fetchServiceHealth } from "@/api/system"
 
@@ -16,14 +10,14 @@ export const queryKeys = {
   homeRows: ["home", "rows"] as const,
   featured: ["home", "featured"] as const,
   continueWatching: ["home", "continue-watching"] as const,
-  movies: ["movies"] as const,
+  movies: (query: PageQuery = {}) => ["movies", query] as const,
+  discoverMovies: (query: DiscoverMoviesQuery = {}) => ["discover", "movies", query] as const,
   movieDetail: (tmdbId: number) => ["movies", "detail", tmdbId] as const,
-  releases: (tmdbId: number) => ["movies", "releases", tmdbId] as const,
-  qualityProfiles: ["settings", "quality-profiles"] as const,
   downloads: ["downloads"] as const,
   librarySummary: ["library", "summary"] as const,
   serviceHealth: ["system", "health"] as const,
 }
+
 
 export function useHomeRows() {
   return useQuery({ queryKey: queryKeys.homeRows, queryFn: fetchHomeRows })
@@ -36,29 +30,28 @@ export function useFeatured() {
 export function useContinueWatching() {
   return useQuery({ queryKey: queryKeys.continueWatching, queryFn: fetchContinueWatching })
 }
-
 export function useMovies() {
-  return useQuery({ queryKey: queryKeys.movies, queryFn: fetchMovies })
+  return useQuery({ queryKey: queryKeys.movies(), queryFn: fetchMovies })
+}
+
+export function useMovieSearch(query: PageQuery) {
+  return useQuery({
+    queryKey: queryKeys.movies(query),
+    queryFn: () => fetchMovieSearch(query),
+    enabled: Boolean(query.keyword?.trim()),
+  })
+}
+
+export function useDiscoverMovies(query: DiscoverMoviesQuery) {
+  return useQuery({ queryKey: queryKeys.discoverMovies(query), queryFn: () => fetchDiscoverMovies(query) })
 }
 
 export function useMovieDetail(tmdbId: number) {
   return useQuery({
     queryKey: queryKeys.movieDetail(tmdbId),
     queryFn: () => fetchMovieDetail(tmdbId),
-    enabled: Number.isFinite(tmdbId),
+    enabled: Number.isSafeInteger(tmdbId) && tmdbId > 0,
   })
-}
-
-export function useReleases(tmdbId: number, enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.releases(tmdbId),
-    queryFn: () => fetchReleases(tmdbId),
-    enabled: enabled && Number.isFinite(tmdbId),
-  })
-}
-
-export function useQualityProfiles() {
-  return useQuery({ queryKey: queryKeys.qualityProfiles, queryFn: fetchQualityProfiles })
 }
 
 export function useDownloads() {

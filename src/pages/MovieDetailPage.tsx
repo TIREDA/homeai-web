@@ -11,7 +11,7 @@ import { MediaStatusPanel } from "@/components/detail/MediaStatusPanel"
 import { CastRow } from "@/components/detail/CastRow"
 import { ReleaseList } from "@/components/detail/ReleaseList"
 import { DownloadConfirmDialog } from "@/components/detail/DownloadConfirmDialog"
-import { useMovieDetail, useReleases, useQualityProfiles } from "@/hooks/queries"
+import { useMovieDetail } from "@/hooks/queries"
 import type { DownloadConfirmConfig, QualityTag, ReleaseResource } from "@/types/media"
 
 export function MovieDetailPage() {
@@ -20,10 +20,8 @@ export function MovieDetailPage() {
   const id = Number(tmdbId)
 
   const detail = useMovieDetail(id)
-  const profiles = useQualityProfiles()
 
   const [showReleases, setShowReleases] = useState(false)
-  const releases = useReleases(id, showReleases)
   const releasesRef = useRef<HTMLDivElement>(null)
 
   const [dialog, setDialog] = useState<{
@@ -68,7 +66,7 @@ export function MovieDetailPage() {
   }
 
   if (detail.isError) {
-    return <ErrorState className="mt-10" onRetry={() => detail.refetch()} />
+    return <ErrorState className="mt-10" error={detail.error} onRetry={() => detail.refetch()} />
   }
 
   const movie = detail.data
@@ -129,10 +127,10 @@ export function MovieDetailPage() {
               </div>
               {showReleases ? (
                 <ReleaseList
-                  releases={releases.data}
-                  isLoading={releases.isLoading}
-                  isError={releases.isError}
-                  onRetry={() => releases.refetch()}
+                  releases={[]}
+                  isLoading={false}
+                  isError={false}
+                  onRetry={() => undefined}
                   onGrab={(r) => setDialog({ open: true, intent: null, release: r })}
                 />
               ) : (
@@ -166,7 +164,7 @@ export function MovieDetailPage() {
         open={dialog.open}
         onClose={() => setDialog({ open: false, intent: null, release: null })}
         movie={movie}
-        profiles={profiles.data ?? []}
+        profiles={[]}
         intent={dialog.intent}
         release={dialog.release}
         onConfirm={handleConfirm}
